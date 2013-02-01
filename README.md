@@ -21,6 +21,7 @@ import (
 	"fmt"
 	"goaio"
 	"syscall"
+	"time"
 )
 
 
@@ -47,16 +48,18 @@ func main() {
 
 	for i := 0; i < 1024; i += 2 {
 		fmt.Println(i)
-		goaio.WriteAt(fd, int64(i*1024), buf1, 1024)
-		goaio.WriteAt(fd, int64((i+1)*1024), buf2, 1024)
+		go goaio.WriteAt(fd, int64(i*1024), buf1, 1024)
+		go goaio.WriteAt(fd, int64((i+1)*1024), buf2, 1024)
 	}
 
-	for i := 0; i < 1024; i += 2 {
-		fmt.Println(i)
-		buf3, _ := goaio.ReadAt(fd, int64(i*1024), 1024)
-		fmt.Println(i, buf3)
-		buf4, _ := goaio.ReadAt(fd, int64((i+1)*1024), 1024)
-		fmt.Println(i, buf4)
+	for i := 0; i < 1024; i++ {
+		go func() {
+			buf3, _ := goaio.ReadAt(fd, int64(i*1024), 1024)
+			fmt.Println(i, buf3)
+		}()
+	}
+	for {
+		time.Sleep(3)
 	}
 }
 
