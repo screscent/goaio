@@ -1,5 +1,5 @@
 //author gonghh
-//Copyright 2013 gonghh(screscent). All rights reserved.
+//Copyright 2013 gonghh(screscent). Under the Apache License, Version 2.0.
 package goaio
 
 /*
@@ -83,8 +83,6 @@ func ReadAt(fd int, off int64, size int) ([]byte, error) {
 	}
 
 	ret := <-retch
-	fmt.Println(ret.buf, ret.err)
-
 	return ret.buf, ret.err
 }
 
@@ -92,10 +90,7 @@ func WriteAt(fd int, off int64, buf []byte, size int) (int, error) {
 	idx := <-idle_event
 	fmt.Println("idx", idx)
 	retch := aio_result_map[idx]
-	defer func() {
-		idle_event <- idx
-		fmt.Println("return", idx)
-	}()
+	defer func() {idle_event <- idx	}()
 
 	var cb *C.struct_iocb = &cbs[idx]
 
@@ -113,9 +108,7 @@ func WriteAt(fd int, off int64, buf []byte, size int) (int, error) {
 	if int(rt) < 0 {
 		return 0, errors.New("io submit failed")
 	}
-	fmt.Println("wait")
 	ret := <-retch
-	fmt.Println(ret.buf, ret.err)
 	return ret.size, ret.err
 }
 
@@ -132,8 +125,6 @@ func run() {
 				iic := C.get_iic_from_iocb(cb)
 
 				key := *(*uint)(unsafe.Pointer(cb.data))
-
-				fmt.Println("key", key)
 				retch := aio_result_map[key]
 
 				if C.int(events[i].res2) != 0 {
@@ -145,11 +136,9 @@ func run() {
 
 				case C.IO_CMD_PREAD:
 					buf := C.GoBytes(unsafe.Pointer((*iic).buf), C.int(events[i].res))
-					fmt.Println("read", buf)
 					retch <- aio_result{buf, int(events[i].res), nil}
 
 				case C.IO_CMD_PWRITE:
-					fmt.Println("write")
 					retch <- aio_result{nil, int(events[i].res), nil}
 
 				default:
