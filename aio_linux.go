@@ -11,19 +11,19 @@ package goaio
 
 size_t get_pagesize()
 {
-  return sysconf(_SC_PAGESIZE);
+	return sysconf(_SC_PAGESIZE);
 }
 
 struct io_iocb_common* get_iic_from_iocb(struct iocb* cb)
 {
 	return &(cb->u.c);
 }
+
 */
 import "C"
 
 import (
 	"errors"
-	"fmt"
 	"unsafe"
 )
 
@@ -42,14 +42,14 @@ var idle_event chan uint
 
 var aio_result_map map[uint]chan aio_result
 
-func initAio(size int) error {
+func InitAio(size int) error {
 	max_event_size = size
 	cbs = make([]C.struct_iocb, max_event_size, max_event_size)
 	aio_result_map = make(map[uint]chan aio_result)
 	idle_event = make(chan uint, max_event_size)
 	for i := 0; i < max_event_size; i++ {
 		idle_event <- uint(i)
-		retch := make(chan aio_result)
+		retch := make(chan aio_result, 1)
 		aio_result_map[uint(i)] = retch
 	}
 	pagesize = C.get_pagesize()
@@ -63,7 +63,7 @@ func initAio(size int) error {
 	return nil
 }
 
-func readAt(fd int, off int, size int) ([]byte, error) {
+func ReadAt(fd int, off int64, size int) ([]byte, error) {
 	idx := <-idle_event
 	retch := aio_result_map[idx]
 	defer func() { idle_event <- idx }()
@@ -74,8 +74,8 @@ func readAt(fd int, off int, size int) ([]byte, error) {
 	C.posix_memalign(&read_buf, pagesize, C.size_t(size))
 	defer C.free(read_buf)
 
-	C.io_prep_pread(cb, C.int(fd), read_buf, C.size_t(size), 0)
-	cbs[idx].key = C.uint(idx)
+	C.io_prep_pread(cb, C.int(fd), read_buf, C.size_t(size), C.longlong(off))
+	cbs[idx].data = unsafe.Pointer(&idx)
 
 	rt := C.io_submit(ctx, 1, &cb)
 	if int(rt) < 0 {
@@ -88,10 +88,14 @@ func readAt(fd int, off int, size int) ([]byte, error) {
 	return ret.buf, ret.err
 }
 
-func writeAt(fd int, off int, buf []byte, size int) (int, error) {
+func WriteAt(fd int, off int64, buf []byte, size int) (int, error) {
 	idx := <-idle_event
+	fmt.Println("idx", idx)
 	retch := aio_result_map[idx]
-	defer func() { idle_event <- idx }()
+	defer func() {
+		idle_event <- idx
+		fmt.Println("return", idx)
+	}()
 
 	var cb *C.struct_iocb = &cbs[idx]
 
@@ -102,18 +106,16 @@ func writeAt(fd int, off int, buf []byte, size int) (int, error) {
 		*(*byte)(unsafe.Pointer(uintptr(write_buf) + uintptr(i))) = buf[i]
 	}
 
-	C.io_prep_pwrite(cb, C.int(fd), write_buf, C.size_t(size), 0)
-	cbs[idx].key = C.uint(idx)
+	C.io_prep_pwrite(cb, C.int(fd), write_buf, C.size_t(size), C.longlong(off))
+	cbs[idx].data = unsafe.Pointer(&idx)
 
 	rt := C.io_submit(ctx, 1, &cb)
 	if int(rt) < 0 {
 		return 0, errors.New("io submit failed")
 	}
-
+	fmt.Println("wait")
 	ret := <-retch
 	fmt.Println(ret.buf, ret.err)
-
-	idle_event <- idx
 	return ret.size, ret.err
 }
 
@@ -129,7 +131,9 @@ func run() {
 				var cb *C.struct_iocb = events[i].obj
 				iic := C.get_iic_from_iocb(cb)
 
-				key := uint(cb.key)
+				key := *(*uint)(unsafe.Pointer(cb.data))
+
+				fmt.Println("key", key)
 				retch := aio_result_map[key]
 
 				if C.int(events[i].res2) != 0 {
