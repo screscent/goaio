@@ -83,14 +83,14 @@ func ReadAt(fd int, off int64, size int) ([]byte, error) {
 	}
 
 	ret := <-retch
+
 	return ret.buf, ret.err
 }
 
 func WriteAt(fd int, off int64, buf []byte, size int) (int, error) {
 	idx := <-idle_event
-	fmt.Println("idx", idx)
 	retch := aio_result_map[idx]
-	defer func() {idle_event <- idx	}()
+	defer func() { idle_event <- idx }()
 
 	var cb *C.struct_iocb = &cbs[idx]
 
@@ -125,6 +125,7 @@ func run() {
 				iic := C.get_iic_from_iocb(cb)
 
 				key := *(*uint)(unsafe.Pointer(cb.data))
+
 				retch := aio_result_map[key]
 
 				if C.int(events[i].res2) != 0 {
