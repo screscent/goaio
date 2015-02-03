@@ -77,7 +77,7 @@ func main() {
 	}
 	wg := &sync.WaitGroup{}
 	wg.Add(1024)
-	//go func() {
+
 	for i := 0; i < 1024; i += 2 {
 		go func(idx int) {
 			fmt.Println(idx)
@@ -96,7 +96,7 @@ func main() {
 	}
 	wg.Wait()
 	fmt.Println("start read....")
-	//}()
+
 	wg = &sync.WaitGroup{}
 	wg.Add(1024)
 	for i := 0; i < 1024; i += 2 {
