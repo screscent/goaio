@@ -163,6 +163,9 @@ func run() {
 			continue
 		}
 		n := C.io_getevents(ctx, C.long(1), C.long(max_event_size), &events[0], &time_out)
+		if n > 0 {
+			aiocount -= int(n)
+		}
 		aio_lock.Unlock()
 		if n <= 0 {
 			continue
