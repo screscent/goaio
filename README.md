@@ -21,9 +21,9 @@ import (
 	"fmt"
 	"goaio"
 	"os"
+	"runtime"
 	"sync"
 	"syscall"
-	"time"
 )
 
 func open(filepath string, length int64) (err error) {
@@ -55,6 +55,7 @@ func open(filepath string, length int64) (err error) {
 }
 
 func main() {
+	runtime.GOMAXPROCS(runtime.NumCPU())
 	open("./test.file", 1024*1000*1000)
 	//must O_DIRECT
 	fd, err := syscall.Open("./test.file", syscall.O_DIRECT|syscall.O_NONBLOCK|syscall.O_RDWR, 0600)
@@ -117,6 +118,7 @@ func main() {
 	fmt.Println("read end....")
 
 }
+
 
 
 ```
