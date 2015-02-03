@@ -21,6 +21,7 @@ import "C"
 
 import (
 	"errors"
+	"runtime"
 	"sync"
 	"time"
 	"unsafe"
@@ -90,12 +91,11 @@ func ReadAt(fd int, off int64, size int) ([]byte, error) {
 
 	aio_lock.Lock()
 	rt := C.io_submit(ctx, 1, &cb)
-	aiocount++
 	if int(rt) < 0 {
-		aiocount--
 		aio_lock.Unlock()
 		return nil, errors.New("io submit failed")
 	}
+	aiocount++
 	aio_lock.Unlock()
 
 	select {
@@ -127,13 +127,12 @@ func WriteAt(fd int, off int64, buf []byte, size int) (int, error) {
 
 	aio_lock.Lock()
 	rt := C.io_submit(ctx, 1, &cb)
-	aiocount++
 
 	if int(rt) < 0 {
-		aiocount--
 		aio_lock.Unlock()
 		return 0, errors.New("io submit failed")
 	}
+	aiocount++
 	aio_lock.Unlock()
 
 	select {
@@ -146,6 +145,8 @@ func WriteAt(fd int, off int64, buf []byte, size int) (int, error) {
 }
 
 func run() {
+	runtime.LockOSThread()
+
 	events := make([]C.struct_io_event, max_event_size, max_event_size)
 	var time_out C.struct_timespec = C.struct_timespec{0, 0}
 	tick := time.Tick(1 * time.Microsecond)
