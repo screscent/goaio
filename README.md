@@ -82,14 +82,14 @@ func main() {
 	for i := 0; i < 1024; i += 2 {
 		go func(idx int) {
 			fmt.Println(idx)
-			goaio.WriteAt(fd, int64(idx*1024), buf[0:1024], 1024)
+			goaio.WriteAt(fd, int64(idx*1024), buf[0:1024])
 			wg.Done()
 
 		}(i)
 
 		go func(idx int) {
 			fmt.Println(idx + 1)
-			goaio.WriteAt(fd, int64((idx+1)*1024), buf2, 1024)
+			goaio.WriteAt(fd, int64((idx+1)*1024), buf2)
 			wg.Done()
 
 		}(i)
