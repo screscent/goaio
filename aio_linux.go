@@ -108,7 +108,12 @@ func ReadAt(fd int, off int64, size int) ([]byte, error) {
 	return ret.buf, ret.err
 }
 
-func WriteAt(fd int, off int64, buf []byte, size int) (int, error) {
+func WriteAt(fd int, off int64, buf []byte) (int, error) {
+	size := len(buf)
+	if size == 0 {
+		return 0, nil
+	}
+
 	idx := <-idle_event
 	retch := aio_result_map[idx]
 	defer func() { idle_event <- idx }()
